@@ -12,7 +12,9 @@ def is_dir_path(string):
     if os.path.isdir(string):
         return string
     else:
-        raise NotADirectoryError(string)
+        os.makedirs(string)
+        return string
+        # raise NotADirectoryError(string)
 
 def normalize(img):
     mean = np.mean(img)
