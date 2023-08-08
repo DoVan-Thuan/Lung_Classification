@@ -143,7 +143,10 @@ dmypy.json
 *.h5
 *.tar
 *.tar.gz
-*npy
+*.npy
+/data/LIDC-IDRI-Preprocessing/LIDC-IDRI
+/data/LIDC-IDRI-Preprocessing/data
+
 # Lightning-Hydra-Template
 configs/local/default.yaml
 /logs/
