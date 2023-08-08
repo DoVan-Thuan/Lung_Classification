@@ -13,7 +13,7 @@ if __name__ == "__main__":
         # Directory for masks
         'MASK_PATH':'./data/Mask',
         # Directory for images
-        'IMAGE_PATH':'./data/CLS_Image',
+        'IMAGE_PATH':'./data/Image',
         # To save images and mask that doesn't contain any nodule or cancer
         # These images will be used later to evaluate our model
         'CLEAN_PATH_IMAGE':'./data/Clean/Image',
