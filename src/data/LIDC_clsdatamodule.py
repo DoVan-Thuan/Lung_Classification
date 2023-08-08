@@ -11,7 +11,7 @@ import time
 import csv
 
 
-class LIDC_IDRI_Dataset(Dataset):
+class LIDC_cls_Dataset(Dataset):
     def __init__(self, nodule_path, clean_path, mode, img_size=[128, 128]):
 
         # nodule_path: path to dataset nodule image folder
@@ -100,7 +100,7 @@ class LIDC_IDRI_Dataset(Dataset):
         return image
     
 
-class LIDCDataModule(LightningDataModule):
+class LIDC_cls_DataModule(LightningDataModule):
     def __init__(
         self,
         nodule_dir: str = "/work/hpc/iai/loc/LIDC-IDRI-Preprocessing/data/Image",
