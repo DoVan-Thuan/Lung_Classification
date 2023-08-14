@@ -1,5 +1,6 @@
 _target_: src.data.LIDC_cls_datamodule.LIDC_cls_DataModule
 nodule_dir: ${paths.data_dir}/LIDC-IDRI-Preprocessing/data/Image
+meta_path: ${paths.data_dir}/LIDC-IDRI-Preprocessing/data/Meta/meta_info.csv
 train_val_test_split: [3, 1, 1]
 batch_size: 64
 num_workers: 0

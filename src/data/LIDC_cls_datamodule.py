@@ -12,8 +12,7 @@ import csv
 import pandas as pd
 
 class LIDC_cls_Dataset(Dataset):
-    def __init__(self, nodule_path, mode,
-                  meta_path="/Users/thanhdo/Projects/LungCancer/Lung_Classification/data/LIDC-IDRI-Preprocessing/data/Meta/meta_info.csv",
+    def __init__(self, nodule_path, mode, meta_path,
                   img_size=[64, 64], degrees=180):
 
         # nodule_path: path to dataset nodule image folder
@@ -59,7 +58,8 @@ class LIDC_cls_Dataset(Dataset):
 class LIDC_cls_DataModule(LightningDataModule):
     def __init__(
         self,
-        nodule_dir: str = "/Users/thanhdo/Projects/LungCancer/Lung_Classification/data/LIDC-IDRI-Preprocessing/data/Image",
+        nodule_dir,
+        meta_path,
         train_val_test_split: Tuple[int, int, int] = (3, 1, 1),
         batch_size: int = 64,
         num_workers: int = 0,
@@ -73,7 +73,7 @@ class LIDC_cls_DataModule(LightningDataModule):
         # also ensures init params will be stored in ckpt
         self.save_hyperparameters(logger=False)
         self.nodule_dir = nodule_dir
-
+        self.meta_path = meta_path
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.pin_memory = pin_memory
@@ -97,11 +97,11 @@ class LIDC_cls_DataModule(LightningDataModule):
 
         nodule_train, nodule_val, nodule_test = self.split_data(file_nodule_list, train_val_test_split)
 
-        self.data_train = LIDC_cls_Dataset(nodule_train, mode="train", img_size=img_size)
+        self.data_train = LIDC_cls_Dataset(nodule_train, mode="train", meta_path=meta_path, img_size=img_size)
 
-        self.data_val = LIDC_cls_Dataset(nodule_val, mode="valid", img_size=img_size)
+        self.data_val = LIDC_cls_Dataset(nodule_val, mode="valid", meta_path=meta_path, img_size=img_size)
 
-        self.data_test = LIDC_cls_Dataset(nodule_test, mode="test", img_size=img_size)
+        self.data_test = LIDC_cls_Dataset(nodule_test, mode="test", meta_path=meta_path, img_size=img_size)
 
 
     def split_data(self, file_paths, train_val_test_split):
