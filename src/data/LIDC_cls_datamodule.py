@@ -9,108 +9,62 @@ import torchvision.transforms as transforms
 from typing import Any, Dict, Optional, Tuple
 import time
 import csv
-
+import pandas as pd
 
 class LIDC_cls_Dataset(Dataset):
-    def __init__(self, nodule_path, clean_path, mode, img_size=[128, 128]):
+    def __init__(self, nodule_path, mode,
+                  meta_path="/Users/thanhdo/Projects/LungCancer/Lung_Classification/data/LIDC-IDRI-Preprocessing/data/Meta/meta_info.csv",
+                  img_size=[64, 64], degrees=180):
 
         # nodule_path: path to dataset nodule image folder
         # clean_path: path to dataset clean image folder
         super().__init__()   
         self.nodule_path = nodule_path
-        self.clean_path = clean_path
+        self.meta_path = meta_path
         self.mode = mode
-        self.resize = transforms.Resize(img_size)
-
+        self.num_classes = 1
+        self.transform = transforms.Compose([transforms.Resize(img_size,antialias=True),
+                                             transforms.RandomRotation(degrees)])
         # define function to get list of (image, mask)
         self.file_list = self._get_file_list()
-
-        print(len(self.file_list))
 
     def __len__(self):
         return len(self.file_list)
     
     def _get_file_list(self):
         file_list = []
-        for dicom_path in self.nodule_path:
+        metadata = pd.read_csv(self.meta_path)
+
+        for image_path in self.nodule_path:
             
-            # Get mask path of nodule image
-            mask_path = dicom_path.replace("Image", "Mask")
-            mask_path = mask_path.replace("NI", "MA")
+            image = np.load(image_path)            
+            image = torch.from_numpy(image).to(torch.float)
+            image = image.unsqueeze(0)
 
-            # Check whether mask path exist
-            if os.path.exists(mask_path):
-
-                image = np.load(dicom_path)
-
-                # image = self._normalize_image(image)
-                mask = np.load(mask_path)
-
-                # convert image, mask to tensor
-
-                image = torch.from_numpy(image).to(torch.float)
-                mask = torch.from_numpy(mask).to(torch.float)
-
-                # add batch dimension 
-
-                image = image.unsqueeze(0)
-                mask = mask.unsqueeze(0)
-                file_list.append((image, mask))
-        
-        for dicom_path in self.clean_path:
-            # Get mask path of nodule image
-
-            mask_path = dicom_path.replace("Image", "Mask")
-            mask_path = mask_path.replace("CN", "CM")
-
-            # Check whether mask path exist
-
-            if os.path.exists(mask_path):
-
-                image = np.load(dicom_path)
-
-                # image = self._normalize_image(image)
-                mask = np.load(mask_path)
-
-                # convert image, mask to tensor
-
-                image = torch.from_numpy(image).to(torch.float)
-                mask = torch.from_numpy(mask).to(torch.float)
-
-                # add batch dimension 
-
-                image = image.unsqueeze(0)
-                mask = mask.unsqueeze(0)
-
-                file_list.append((image, mask))
-
+            img_name = image_path.split('/')[-1][:-4]
+            malignancy = metadata[metadata['original_image']==img_name]['malignancy'].iloc[0]
+            malignancy = 1 if malignancy >=3 else 0
+            malignancy = torch.from_numpy(np.array([malignancy]))
+            # malignancy = torch.nn.functional.one_hot(malignancy, num_classes=self.num_classes).to(torch.float32)
+            
+            file_list.append((image, malignancy))
+        print(f"Len {self.mode}: {len(file_list)}")
         return file_list
 
     def __getitem__(self, index):
-        image, mask = self.file_list[index]
-        return self.resize(image), self.resize(mask)
-    
-    def _normalize_image(self, image):
-        min_val = np.min(image)
-        max_val = np.max(image)
-
-        if max_val - min_val > 0:
-            image = (image - min_val) / (max_val - min_val)
-
-        return image
+        image, malignancy = self.file_list[index]
+        return self.transform(image),malignancy
     
 
 class LIDC_cls_DataModule(LightningDataModule):
     def __init__(
         self,
-        nodule_dir: str = "/work/hpc/iai/loc/LIDC-IDRI-Preprocessing/data/Image",
-        clean_dir: str = "/work/hpc/iai/loc/LIDC-IDRI-Preprocessing/data/Clean/Image",
+        nodule_dir: str = "/Users/thanhdo/Projects/LungCancer/Lung_Classification/data/LIDC-IDRI-Preprocessing/data/Image",
         train_val_test_split: Tuple[int, int, int] = (3, 1, 1),
         batch_size: int = 64,
         num_workers: int = 0,
         pin_memory: bool = False,
         num_nodule: int = 1000,
-        num_clean: int = 1000,
         img_size=[128, 128],
     ):
         super().__init__()
@@ -119,7 +73,6 @@ class LIDC_cls_DataModule(LightningDataModule):
         # also ensures init params will be stored in ckpt
         self.save_hyperparameters(logger=False)
         self.nodule_dir = nodule_dir
-        self.clean_dir = clean_dir
 
         self.batch_size = batch_size
         self.num_workers = num_workers
@@ -129,9 +82,7 @@ class LIDC_cls_DataModule(LightningDataModule):
         # get all file_name in folder
 
         file_nodule_list = []
-        file_clean_list = []
         self.num_nodule = num_nodule
-        self.num_clean = num_clean
 
         # get full path of each nodule file
         for root, _, files in os.walk(self.nodule_dir):
@@ -140,26 +91,17 @@ class LIDC_cls_DataModule(LightningDataModule):
                     dicom_path = os.path.join(root, file)
                     file_nodule_list.append(dicom_path)
         
-        # get full path of each clean file
-        for root, _, files in os.walk(self.clean_dir):
-            for file in files:
-                if file.endswith(".npy"):
-                    dicom_path = os.path.join(root, file)
-                    file_clean_list.append(dicom_path)
 
         file_nodule_list = file_nodule_list[:self.num_nodule]
 
-        file_clean_list = file_clean_list[:self.num_clean]
 
         nodule_train, nodule_val, nodule_test = self.split_data(file_nodule_list, train_val_test_split)
 
-        clean_train, clean_val, clean_test = self.split_data(file_clean_list, train_val_test_split)
+        self.data_train = LIDC_cls_Dataset(nodule_train, mode="train", img_size=img_size)
 
-        self.data_train = LIDC_IDRI_Dataset(nodule_train, clean_train, mode="train", img_size=img_size)
+        self.data_val = LIDC_cls_Dataset(nodule_val, mode="valid", img_size=img_size)
 
-        self.data_val = LIDC_IDRI_Dataset(nodule_val, clean_val, mode="valid", img_size=img_size)
-
-        self.data_test = LIDC_IDRI_Dataset(nodule_test, clean_test, mode="test", img_size=img_size)
+        self.data_test = LIDC_cls_Dataset(nodule_test, mode="test", img_size=img_size)
 
 
     def split_data(self, file_paths, train_val_test_split):
@@ -224,7 +166,8 @@ class LIDC_cls_DataModule(LightningDataModule):
         pass
 
 if __name__ == "__main__":
-    datamodule = LIDCDataModule(num_nodule=1000, num_clean=500)
+    datamodule = LIDC_cls_DataModule(num_nodule=10)
     train_dataloader = datamodule.train_dataloader()
     batch_image = next(iter(train_dataloader))
     images, labels = batch_image
+    print(labels)

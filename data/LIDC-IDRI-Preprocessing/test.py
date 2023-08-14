@@ -1,15 +1,7 @@
 import numpy as np
-import cv2
-import os
-import glob
+import pandas as pd
 
-folder = "nodules"
-if not os.path.exists(folder): os.mkdir(folder)
-
-for name in os.listdir('data/Image'):
-    if "LIDC" not in name: continue
-    images = glob.glob(f'data/Image/{name}/*.npy')
-    masks = glob.glob(f'data/Mask/{name}/*.npy')
-    for i in range(len(images)):
-        mask = np.load(masks[i])
-        image = np.load(images[i])
+a = pd.read_csv('/Users/thanhdo/Projects/LungCancer/Lung_Classification/data/LIDC-IDRI-Preprocessing/data/Meta/meta.csv')
+img = "0001_NI000_slice000"
+label = a[a['original_image']==img]['malignancy'][0]
+print(label)
