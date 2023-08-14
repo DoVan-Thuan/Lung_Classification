@@ -11,7 +11,7 @@ from torchmetrics.classification import Dice
 pyrootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 
 from src.utils.dc_ce_loss import DC_and_CE_loss
-from torch.nn import CrossEntropyLoss, BCELoss
+from torch.nn import CrossEntropyLoss, BCELoss, BCEWithLogitsLoss
 
 class UNetPlusPlus_cls_Module(LightningModule):
     """Example of LightningModule for MNIST classification.
@@ -50,15 +50,15 @@ class UNetPlusPlus_cls_Module(LightningModule):
         elif loss == 'ce':
             self.criterion = CrossEntropyLoss()
         elif loss == 'bce':
-            self.criterion = BCELoss()
+            self.criterion = BCEWithLogitsLoss()
         
         else:
             raise ValueError('Not implement loss')
 
         # metric objects for calculating and averaging accuracy across batches
-        self.train_dice = Dice(num_classes=net.n_classes)
-        self.val_dice = Dice(num_classes=net.n_classes)
-        self.test_dice = Dice(num_classes=net.n_classes)
+        self.train_dice = Dice(num_classes=net.n_classes, multiclass=False)
+        self.val_dice = Dice(num_classes=net.n_classes, multiclass=False)
+        self.test_dice = Dice(num_classes=net.n_classes, multiclass=False)
 
         # for averaging loss across batches
         self.train_loss = MeanMetric()
@@ -78,9 +78,9 @@ class UNetPlusPlus_cls_Module(LightningModule):
 
     def model_step(self, batch: Any):
         x, y = batch
-        y = y.type(torch.int64)
+        y = y.to(torch.int64)
         logits = self.forward(x)
-        loss = self.criterion(logits, y)
+        loss = self.criterion(logits, y.float())
         preds = torch.argmax(logits, dim=1)
         return loss, preds, y
 

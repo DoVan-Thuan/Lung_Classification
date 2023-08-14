@@ -1,9 +1,9 @@
 _target_: src.data.LIDC_cls_datamodule.LIDC_cls_DataModule
 nodule_dir: ${paths.data_dir}/LIDC-IDRI-Preprocessing/data/Image
 meta_path: ${paths.data_dir}/LIDC-IDRI-Preprocessing/data/Meta/meta_info.csv
-train_val_test_split: [3, 1, 1]
-batch_size: 64
+train_val_test_split: [8, 1, 1]
+batch_size: 32
 num_workers: 0
 pin_memory: True
-num_nodule: 1000
+num_nodule: 100000
 img_size: [64, 64]
